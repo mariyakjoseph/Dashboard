@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHRIST University (Lavasa) - Tabbed Student Analytics</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for interactive charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Datalabels Plugin for annotations -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- PapaParse for parsing CSV data in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .chart-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+            border: 1px solid #e2e8f0;
+        }
+
+        .kpi-card {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        .kpi-icon {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 4rem;
+            height: 4rem;
+            border-radius: 9999px;
+        }
+
+        /* Tab styling */
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .tab-button.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .filter-select {
+            min-width: 200px;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #a5b4fc;
+            box-shadow: 0 0 0 3px rgba(199, 210, 254, 0.5);
+        }
+    </style>
+</head>
+
+<body class="antialiased text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-screen-xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center space-x-5">
+                <img src="https://placehold.co/60x60/4f46e5/FFFFFF?text=CU" alt="Christ University Logo"
+                    class="rounded-full">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">Student Analytics</h1>
+                    <p class="text-slate-500 mt-1">CHRIST (Deemed to be University) - Lavasa Campus</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-4 sm:p-6 lg:p-8 max-w-screen-xl mx-auto">
+        <div id="loading-indicator" class="text-center py-20">
+            <p class="text-xl font-semibold text-slate-600">Loading interactive dashboard...</p>
+        </div>
+
+        <div id="dashboard-content" class="hidden">
+            <!-- Tabs Navigation -->
+            <div class="border-b border-slate-300 mb-8">
+                <nav class="flex flex-wrap -mb-px" id="tabs">
+                    <button data-tab="overview" class="tab-button active"><svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5 mr-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                        </svg>Overview</button>
+                    <button data-tab="geographics" class="tab-button"><svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5 mr-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                clip-rule="evenodd" />
+                        </svg>Geographics</button>
+                    <button data-tab="courses" class="tab-button"><svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5 mr-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 16c1.255 0 2.443-.29 3.5-.804V4.804zM14.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0114.5 16c1.255 0 2.443-.29 3.5-.804V4.804A7.968 7.968 0 0014.5 4z" />
+                        </svg>Course Trends</button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tab-content-container">
+                <!-- Overview Tab -->
+                <div id="overview-content" class="tab-content active">
+                    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="chart-card kpi-card">
+                            <div class="kpi-icon bg-blue-100 text-blue-600"><svg xmlns="http://www.w3.org/2000/svg"
+                                    class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg></div>
+                            <div class="ml-5">
+                                <p class="text-slate-500 text-lg">Total Students</p>
+                                <p id="total-students" class="text-3xl font-bold text-slate-900">0</p>
+                            </div>
+                        </div>
+                        <div class="chart-card kpi-card">
+                            <div class="kpi-icon bg-violet-100 text-violet-600"><svg xmlns="http://www.w3.org/2000/svg"
+                                    class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg></div>
+                            <div class="ml-5">
+                                <p class="text-slate-500 text-lg">Course Diversity</p>
+                                <p id="total-courses" class="text-3xl font-bold text-slate-900">0</p>
+                            </div>
+                        </div>
+                        <div class="chart-card kpi-card">
+                            <div class="kpi-icon bg-green-100 text-green-600"><svg xmlns="http://www.w3.org/2000/svg"
+                                    class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h10a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.737 11l-.262-2.813a2 2 0 012.228-2.052l.233.046a2 2 0 011.732 2.73l-.233 2.086m-1.631-4.013l.233-2.086a2 2 0 012.732-1.732l.046.233a2 2 0 01-2.052 2.228l-2.813.262zM11 4.464V2.25a2.25 2.25 0 012.25 2.25H11z" />
+                                </svg></div>
+                            <div class="ml-5">
+                                <p class="text-slate-500 text-lg">Countries Represented</p>
+                                <p id="total-countries" class="text-3xl font-bold text-slate-900">0</p>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="grid grid-cols-1 lg:grid-cols gap-6">
+                        <div class="chart-card p-6">
+                            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                                <h2 class="text-xl font-semibold text-center text-slate-700">Year-Over-Year Enrollment
+                                </h2>
+                                <select id="yoy-course-filter" class="filter-select mt-2 sm:mt-0"></select>
+                            </div>
+                            <canvas id="yearTrendChart"></canvas>
+                        </div>
+                    </section>
+
+
+                    <section class="grid grid-cols-1 lg:grid-cols gap-6">
+                        <div class="chart-card p-6" style="margin: 100px;">
+                            <h2 class="text-xl font-semibold mb-4 text-center text-slate-700">Course Enrollment
+                                Breakdown</h2>
+                            <canvas id="courseChart"></canvas>
+                        </div>
+                    </section>
+
+                </div>
+                <!-- Geographics Tab -->
+                <div id="geographics-content" class="tab-content">
+                    <div class="chart-card p-6">
+                        <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-6 gap-4">
+                            <h2 class="text-xl font-semibold text-slate-700">Geographical Student Distribution</h2>
+                            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                <div class="flex items-center">
+                                    <label for="geo-course-filter"
+                                        class="mr-3 font-medium text-slate-600">Course:</label>
+                                    <select id="geo-course-filter" class="filter-select"></select>
+                                </div>
+                                <div class="flex items-center">
+                                    <label for="country-filter" class="mr-3 font-medium text-slate-600">Country:</label>
+                                    <select id="country-filter" class="filter-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols gap-8">
+                            <div>
+                                <h3 class="text-lg font-medium text-center text-slate-600 mb-2">States</h3>
+                                <canvas id="stateChart"></canvas>
+                            </div>
+                        </div>
+
+                        <br>
+
+                        <div class="grid grid-cols-1 md:grid-cols gap-8">
+                            <div>
+                                <h3 class="text-lg font-medium text-center text-slate-600 mb-2">Cities</h3>
+                                <canvas id="cityChart"></canvas>
+                            </div>
+                        </div>
+
+
+
+
+
+                    </div>
+                </div>
+                <!-- Course Trends Tab -->
+                <div id="courses-content" class="tab-content">
+                    <div class="chart-card p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-center text-slate-700">Course Popularity Trends by
+                                Year</h2>
+                            <select id="trends-course-filter" class="filter-select mt-2 sm:mt-0"></select>
+                        </div>
+                        <canvas id="courseByYearChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Corrected file paths
+            const dataUrls = ['students_data.csv', 'students_data_foreign.csv'];
+            let allStudentData = [];
+            let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance;
+
+            Chart.register(ChartDataLabels);
+            Chart.defaults.plugins.datalabels.color = '#334155';
+            Chart.defaults.plugins.datalabels.font.weight = '500';
+
+            const PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#64748b', '#84cc16', '#06b6d4', '#d946ef', '#f97316'];
+
+            async function initDashboard() {
+                try {
+                    const promises = dataUrls.map(url => fetch(url).then(res => {
+                        if (!res.ok) throw new Error(`Failed to load ${url}: ${res.statusText}`);
+                        return res.text();
+                    }));
+                    const csvTexts = await Promise.all(promises);
+
+                    const parsedData = csvTexts.map(text => Papa.parse(text, { header: true, skipEmptyLines: true }).data);
+                    allStudentData = [].concat(...parsedData).map(row => {
+                        for (let key in row) { row[key] = row[key] ? row[key].trim().toUpperCase() : 'N/A'; }
+                        if (row['Permanent Country'] === 'INDIAN') row['Permanent Country'] = 'INDIA';
+                        return row;
+                    });
+
+                    renderAllTabs(allStudentData);
+                    setupEventListeners(allStudentData);
+
+                    document.getElementById('loading-indicator').style.display = 'none';
+                    document.getElementById('dashboard-content').classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Failed to load or parse data:", error);
+                    document.getElementById('loading-indicator').innerHTML = `<p class="text-red-600">Error: Could not load student data. Please ensure 'students_data - India.csv' and 'students_data - Foreign National.csv' files are available.</p>`;
+                }
+            }
+
+            function setupEventListeners(data) {
+                // Tabs
+                document.getElementById('tabs').addEventListener('click', (e) => {
+                    if (e.target.matches('.tab-button')) {
+                        document.querySelector('#tabs .active').classList.remove('active');
+                        e.target.classList.add('active');
+                        document.querySelector('#tab-content-container .active').classList.remove('active');
+                        document.getElementById(`${e.target.dataset.tab}-content`).classList.add('active');
+                    }
+                });
+
+                // Filters
+                const courses = ['All Courses', ...[...new Set(data.map(r => r.Course))].filter(c => c !== 'N/A').sort()];
+                const yoyFilter = document.getElementById('yoy-course-filter');
+                const trendsFilter = document.getElementById('trends-course-filter');
+                const geoCourseFilter = document.getElementById('geo-course-filter');
+
+                courses.forEach(c => {
+                    const optionValue = c === 'All Courses' ? 'ALL' : c;
+                    yoyFilter.add(new Option(c, optionValue));
+                    trendsFilter.add(new Option(c, optionValue));
+                    geoCourseFilter.add(new Option(c, optionValue));
+                });
+
+                yoyFilter.addEventListener('change', () => updateYearTrendChart(data));
+                trendsFilter.addEventListener('change', () => updateCourseByYearChart(data));
+
+                const countries = [...new Set(data.map(r => r['Permanent Country']))].sort();
+                const countryFilter = document.getElementById('country-filter');
+                countries.forEach(c => countryFilter.add(new Option(c.charAt(0) + c.slice(1).toLowerCase(), c)));
+                countryFilter.value = 'INDIA';
+
+                countryFilter.addEventListener('change', () => updateGeographicalCharts(data));
+                geoCourseFilter.addEventListener('change', () => updateGeographicalCharts(data));
+            }
+
+            function renderAllTabs(data) {
+                renderKpiCards(data);
+                renderCourseChart(data);
+                updateYearTrendChart(data);
+                updateGeographicalCharts(data);
+                updateCourseByYearChart(data);
+            }
+
+            function renderKpiCards(data) {
+                document.getElementById('total-students').textContent = data.length;
+                document.getElementById('total-courses').textContent = [...new Set(data.map(r => r.Course))].filter(c => c !== 'N/A').length;
+                document.getElementById('total-countries').textContent = [...new Set(data.map(r => r['Permanent Country']))].length;
+            }
+
+            function renderCourseChart(data) {
+                const counts = data.reduce((acc, { Course }) => { if (Course !== 'N/A') acc[Course] = (acc[Course] || 0) + 1; return acc; }, {});
+                const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+                const labels = sorted.map(item => item[0]);
+                const values = sorted.map(item => item[1]);
+                const total = values.reduce((a, b) => a + b, 0);
+
+                new Chart(document.getElementById('courseChart'), {
+                    type: 'pie', data: { labels, datasets: [{ data: values, backgroundColor: PALETTE, borderWidth: 2 }] },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, datalabels: { formatter: (value) => `${((value / total) * 100).toFixed(1)}%`, color: '#fff', font: { weight: 'bold', size: 12 } } } }
+                });
+            }
+
+            function updateYearTrendChart(data) {
+                if (yearTrendChartInstance) yearTrendChartInstance.destroy();
+                const courseFilter = document.getElementById('yoy-course-filter').value;
+                const filteredData = (courseFilter === 'ALL') ? data : data.filter(r => r.Course === courseFilter);
+                const counts = filteredData.reduce((acc, { Year }) => { if (Year !== 'N/A') acc[Year] = (acc[Year] || 0) + 1; return acc; }, {});
+                const sorted = Object.entries(counts).sort(([a], [b]) => a.localeCompare(b));
+                const labels = sorted.map(item => item[0]);
+                const values = sorted.map(item => item[1]);
+
+                yearTrendChartInstance = new Chart(document.getElementById('yearTrendChart'), {
+                    type: 'line', data: { labels, datasets: [{ label: 'Students Enrolled', data: values, fill: true, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, pointBackgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 7 }] },
+                    options: { scales: { y: { beginAtZero: true, grid: { color: '#e2e8f0' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false }, datalabels: { align: 'end', anchor: 'end', offset: -8, backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: 4, padding: 4 } } }
+                });
+            }
+
+            function updateGeographicalCharts(data) {
+                const countryFilter = document.getElementById('country-filter').value;
+                const courseFilter = document.getElementById('geo-course-filter').value;
+
+                let filteredData = data.filter(r => r['Permanent Country'] === countryFilter);
+                if (courseFilter !== 'ALL') {
+                    filteredData = filteredData.filter(r => r.Course === courseFilter);
+                }
+
+                if (stateChartInstance) stateChartInstance.destroy();
+                stateChartInstance = renderGeographicalChart(filteredData, 'Permanent State', 'stateChart', PALETTE[5]);
+                if (cityChartInstance) cityChartInstance.destroy();
+                cityChartInstance = renderGeographicalChart(filteredData, 'Permanent City', 'cityChart', PALETTE[2]);
+            }
+
+            function renderGeographicalChart(data, field, chartId, color) {
+                const counts = data.reduce((acc, row) => { const key = row[field]; if (key && key !== 'N/A') { acc[key] = (acc[key] || 0) + 1; } return acc; }, {});
+                const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+                const labels = sorted.map(item => item[0].charAt(0) + item[0].slice(1).toLowerCase());
+                const values = sorted.map(item => item[1]);
+
+                return new Chart(document.getElementById(chartId), {
+                    type: 'bar', data: { labels, datasets: [{ data: values, backgroundColor: color, borderRadius: 4 }] },
+                    options: { indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#e2e8f0' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', offset: 4 } } }
+                });
+            }
+
+            function updateCourseByYearChart(data) {
+                if (courseByYearChartInstance) courseByYearChartInstance.destroy();
+
+                const courseFilter = document.getElementById('trends-course-filter').value;
+                const years = [...new Set(data.map(r => r.Year))].filter(y => y !== 'N/A').sort();
+                let chartType, datasets, datalabelsConfig;
+
+                if (courseFilter === 'ALL') {
+                    const courses = [...new Set(data.map(r => r.Course))].filter(c => c !== 'N/A');
+                    const colorMap = courses.reduce((acc, course, i) => ({ ...acc, [course]: PALETTE[i % PALETTE.length] }), {});
+                    const counts = data.reduce((acc, { Year, Course }) => { if (Year !== 'N/A' && Course !== 'N/A') { if (!acc[Year]) acc[Year] = {}; acc[Year][Course] = (acc[Year][Course] || 0) + 1; } return acc; }, {});
+
+                    chartType = 'bar';
+                    datasets = courses.map(course => ({ label: course, data: years.map(year => (counts[year] && counts[year][course]) || 0), backgroundColor: colorMap[course], borderRadius: 2 }));
+                    datalabelsConfig = { display: false };
+
+                } else {
+                    const filteredData = data.filter(r => r.Course === courseFilter);
+                    const counts = filteredData.reduce((acc, { Year }) => { if (Year !== 'N/A') acc[Year] = (acc[Year] || 0) + 1; return acc; }, {});
+                    const values = years.map(year => counts[year] || 0);
+
+                    chartType = 'line';
+                    datasets = [{ label: courseFilter, data: values, fill: true, borderColor: PALETTE[4], backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.3 }];
+                    datalabelsConfig = { align: 'end', anchor: 'end' };
+                }
+
+                courseByYearChartInstance = new Chart(document.getElementById('courseByYearChart'), {
+                    type: chartType,
+                    data: { labels: years, datasets: datasets },
+                    options: { responsive: true, scales: { x: { stacked: courseFilter === 'ALL', grid: { display: false } }, y: { stacked: courseFilter === 'ALL', grid: { color: '#e2e8f0' } } }, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, datalabels: datalabelsConfig } }
+                });
+            }
+
+            initDashboard();
+        });
+    </script>
+</body>
+
+</html>
