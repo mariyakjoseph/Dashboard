@@ -168,26 +168,28 @@
                             </div>
                         </div>
                     </section>
-                    <section class="grid grid-cols-1 lg:grid-cols gap-6">
+                    <section class="grid grid-cols-1 gap-8">
                         <div class="chart-card p-6">
                             <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
-                                <h2 class="text-xl font-semibold text-center text-slate-700">Year-Over-Year Enrollment
-                                </h2>
+                                <h2 class="text-xl font-semibold text-center text-slate-700">Year-Over-Year Enrollment</h2>
                                 <select id="yoy-course-filter" class="filter-select mt-2 sm:mt-0"></select>
                             </div>
                             <canvas id="yearTrendChart"></canvas>
                         </div>
-                    </section>
-
-
-                    <section class="grid grid-cols-1 lg:grid-cols gap-6">
-                        <div class="chart-card p-6" style="margin: 100px;">
-                            <h2 class="text-xl font-semibold mb-4 text-center text-slate-700">Course Enrollment
-                                Breakdown</h2>
-                            <canvas id="courseChart"></canvas>
+                        <div class="chart-card p-6">
+                            <h2 class="text-xl font-semibold mb-4 text-center text-slate-700">Course Enrollment Breakdown</h2>
+                            <div class="relative mx-auto" style="max-height: 80vw; max-width: 80vw;">
+                                <canvas id="courseChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="chart-card p-6">
+                            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                                <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
+                                <select id="year-analysis-filter-overview" class="filter-select mt-2 sm:mt-0"></select>
+                            </div>
+                            <canvas id="yearAnalysisChart-overview"></canvas>
                         </div>
                     </section>
-
                 </div>
                 <!-- Geographics Tab -->
                 <div id="geographics-content" class="tab-content">
@@ -196,8 +198,7 @@
                             <h2 class="text-xl font-semibold text-slate-700">Geographical Student Distribution</h2>
                             <div class="flex flex-col sm:flex-row gap-4 items-center">
                                 <div class="flex items-center">
-                                    <label for="geo-course-filter"
-                                        class="mr-3 font-medium text-slate-600">Course:</label>
+                                    <label for="geo-course-filter" class="mr-3 font-medium text-slate-600">Course:</label>
                                     <select id="geo-course-filter" class="filter-select"></select>
                                 </div>
                                 <div class="flex items-center">
@@ -206,37 +207,40 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols gap-8">
+                        <div class="grid grid-cols-1 gap-8">
                             <div>
                                 <h3 class="text-lg font-medium text-center text-slate-600 mb-2">States</h3>
                                 <canvas id="stateChart"></canvas>
                             </div>
-                        </div>
-
-                        <br>
-
-                        <div class="grid grid-cols-1 md:grid-cols gap-8">
-                            <div>
+                             <div class="mt-8">
                                 <h3 class="text-lg font-medium text-center text-slate-600 mb-2">Cities</h3>
                                 <canvas id="cityChart"></canvas>
                             </div>
                         </div>
-
-
-
-
-
+                         <div class="chart-card p-6 mt-8">
+                            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                                <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
+                                <select id="year-analysis-filter-geographics" class="filter-select mt-2 sm:mt-0"></select>
+                            </div>
+                            <canvas id="yearAnalysisChart-geographics"></canvas>
+                        </div>
                     </div>
                 </div>
                 <!-- Course Trends Tab -->
                 <div id="courses-content" class="tab-content">
                     <div class="chart-card p-6">
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
-                            <h2 class="text-xl font-semibold text-center text-slate-700">Course Popularity Trends by
-                                Year</h2>
+                            <h2 class="text-xl font-semibold text-center text-slate-700">Course Popularity Trends by Year</h2>
                             <select id="trends-course-filter" class="filter-select mt-2 sm:mt-0"></select>
                         </div>
                         <canvas id="courseByYearChart"></canvas>
+                    </div>
+                     <div class="chart-card p-6 mt-8">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
+                            <select id="year-analysis-filter-courses" class="filter-select mt-2 sm:mt-0"></select>
+                        </div>
+                        <canvas id="yearAnalysisChart-courses"></canvas>
                     </div>
                 </div>
             </div>
@@ -245,10 +249,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Corrected file paths
-            const dataUrls = ['students_data.csv', 'students_data_foreign.csv'];
+            const dataUrls = ['students_data.csv' , 'students_data_foreign.csv'];
             let allStudentData = [];
             let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance;
+            let yearAnalysisChartInstances = {};
 
             Chart.register(ChartDataLabels);
             Chart.defaults.plugins.datalabels.color = '#334155';
@@ -277,9 +281,10 @@
                     document.getElementById('loading-indicator').style.display = 'none';
                     document.getElementById('dashboard-content').classList.remove('hidden');
 
-                } catch (error) {
+                } catch (error)
+                 {
                     console.error("Failed to load or parse data:", error);
-                    document.getElementById('loading-indicator').innerHTML = `<p class="text-red-600">Error: Could not load student data. Please ensure 'students_data - India.csv' and 'students_data - Foreign National.csv' files are available.</p>`;
+                     document.getElementById('loading-indicator').innerHTML = `<p class="text-red-600 font-semibold">Error: Could not load student data.</p><p class="text-slate-500 mt-2">Please ensure the files 'students_data - India.csv' and 'students_data - Foreign National.csv' are available.</p>`;
                 }
             }
 
@@ -310,13 +315,26 @@
                 yoyFilter.addEventListener('change', () => updateYearTrendChart(data));
                 trendsFilter.addEventListener('change', () => updateCourseByYearChart(data));
 
-                const countries = [...new Set(data.map(r => r['Permanent Country']))].sort();
+                const countries = ['All Countries', ...[...new Set(data.map(r => r['Permanent Country']))].sort()];
                 const countryFilter = document.getElementById('country-filter');
-                countries.forEach(c => countryFilter.add(new Option(c.charAt(0) + c.slice(1).toLowerCase(), c)));
-                countryFilter.value = 'INDIA';
-
+                countries.forEach(c => {
+                    const optionValue = c === 'All Countries' ? 'ALL' : c;
+                    const optionText = c === 'All Countries' ? c : c.charAt(0) + c.slice(1).toLowerCase();
+                    countryFilter.add(new Option(optionText, optionValue));
+                });
+                
                 countryFilter.addEventListener('change', () => updateGeographicalCharts(data));
                 geoCourseFilter.addEventListener('change', () => updateGeographicalCharts(data));
+
+                const years = ['All Years', ...[...new Set(data.map(r => r.Year))].filter(y => y !== 'N/A').sort()];
+                const yearAnalysisFilters = document.querySelectorAll('[id^="year-analysis-filter-"]');
+                yearAnalysisFilters.forEach(filter => {
+                    years.forEach(y => {
+                        const optionValue = y === 'All Years' ? 'ALL' : y;
+                        filter.add(new Option(y, optionValue));
+                    });
+                    filter.addEventListener('change', () => updateYearAnalysisCharts(data));
+                });
             }
 
             function renderAllTabs(data) {
@@ -325,6 +343,7 @@
                 updateYearTrendChart(data);
                 updateGeographicalCharts(data);
                 updateCourseByYearChart(data);
+                updateYearAnalysisCharts(data);
             }
 
             function renderKpiCards(data) {
@@ -342,7 +361,18 @@
 
                 new Chart(document.getElementById('courseChart'), {
                     type: 'pie', data: { labels, datasets: [{ data: values, backgroundColor: PALETTE, borderWidth: 2 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, datalabels: { formatter: (value) => `${((value / total) * 100).toFixed(1)}%`, color: '#fff', font: { weight: 'bold', size: 12 } } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, 
+                            datalabels: { 
+                                formatter: (value) => `${((value / total) * 100).toFixed(1)}%`, 
+                                color: '#fff', 
+                                font: { weight: 'bold', size: 12 } 
+                            } 
+                        } 
+                    }
                 });
             }
 
@@ -365,7 +395,10 @@
                 const countryFilter = document.getElementById('country-filter').value;
                 const courseFilter = document.getElementById('geo-course-filter').value;
 
-                let filteredData = data.filter(r => r['Permanent Country'] === countryFilter);
+                let filteredData = data;
+                if (countryFilter !== 'ALL') {
+                    filteredData = filteredData.filter(r => r['Permanent Country'] === countryFilter);
+                }
                 if (courseFilter !== 'ALL') {
                     filteredData = filteredData.filter(r => r.Course === courseFilter);
                 }
@@ -390,7 +423,7 @@
 
             function updateCourseByYearChart(data) {
                 if (courseByYearChartInstance) courseByYearChartInstance.destroy();
-
+                
                 const courseFilter = document.getElementById('trends-course-filter').value;
                 const years = [...new Set(data.map(r => r.Year))].filter(y => y !== 'N/A').sort();
                 let chartType, datasets, datalabelsConfig;
@@ -421,9 +454,40 @@
                 });
             }
 
+            function updateYearAnalysisCharts(data) {
+                const tabs = ['overview', 'geographics', 'courses'];
+                tabs.forEach(tab => {
+                    const filterEl = document.getElementById(`year-analysis-filter-${tab}`);
+                    const chartElId = `yearAnalysisChart-${tab}`;
+                    if (!filterEl) return;
+
+                    const yearFilter = filterEl.value;
+                    const filteredData = (yearFilter === 'ALL') ? data : data.filter(r => r.Year === yearFilter);
+
+                    if (yearAnalysisChartInstances[tab]) yearAnalysisChartInstances[tab].destroy();
+                    
+                    const counts = filteredData.reduce((acc, { Course }) => { if (Course !== 'N/A') acc[Course] = (acc[Course] || 0) + 1; return acc; }, {});
+                    const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+                    const labels = sorted.map(item => item[0]);
+                    const values = sorted.map(item => item[1]);
+
+                    yearAnalysisChartInstances[tab] = new Chart(document.getElementById(chartElId), {
+                        type: 'bar',
+                        data: { labels, datasets: [{ label: 'Number of Students', data: values, backgroundColor: PALETTE[0], borderRadius: 4 }] },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: { x: { beginAtZero: true } },
+                            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end' } }
+                        }
+                    });
+                });
+            }
+
             initDashboard();
         });
     </script>
 </body>
 
 </html>
+
