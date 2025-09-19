@@ -185,13 +185,6 @@
                                 <canvas id="courseChart"></canvas>
                             </div>
                         </div>
-                         <div class="chart-card p-6">
-                            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
-                                <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
-                                <select id="year-analysis-filter-overview" class="filter-select mt-2 sm:mt-0"></select>
-                            </div>
-                            <canvas id="yearAnalysisChart-overview"></canvas>
-                        </div>
                     </section>
                 </div>
                 <!-- Geographics Tab -->
@@ -220,13 +213,6 @@
                                 <canvas id="cityChart"></canvas>
                             </div>
                         </div>
-                         <div class="chart-card p-6 mt-8">
-                            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
-                                <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
-                                <select id="year-analysis-filter-geographics" class="filter-select mt-2 sm:mt-0"></select>
-                            </div>
-                            <canvas id="yearAnalysisChart-geographics"></canvas>
-                        </div>
                     </div>
                 </div>
                 <!-- Course Trends Tab -->
@@ -237,13 +223,6 @@
                             <select id="trends-course-filter" class="filter-select mt-2 sm:mt-0"></select>
                         </div>
                         <canvas id="courseByYearChart"></canvas>
-                    </div>
-                     <div class="chart-card p-6 mt-8">
-                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
-                            <h2 class="text-xl font-semibold text-center text-slate-700">Enrollment by Course for a Specific Year</h2>
-                            <select id="year-analysis-filter-courses" class="filter-select mt-2 sm:mt-0"></select>
-                        </div>
-                        <canvas id="yearAnalysisChart-courses"></canvas>
                     </div>
                 </div>
                 <!-- State Trends Tab -->
@@ -264,6 +243,22 @@
                         </div>
                         <canvas id="stateTrendChart"></canvas>
                     </div>
+                    <div class="chart-card p-6 mt-8">
+                        <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-4 gap-4">
+                            <h2 class="text-xl font-semibold text-slate-700">Course Distribution by State & Year</h2>
+                            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                <div class="flex items-center">
+                                    <label for="state-course-year-filter" class="mr-3 font-medium text-slate-600">Year:</label>
+                                    <select id="state-course-year-filter" class="filter-select"></select>
+                                </div>
+                                <div class="flex items-center">
+                                    <label for="state-course-state-filter" class="mr-3 font-medium text-slate-600">State:</label>
+                                    <select id="state-course-state-filter" class="filter-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="stateCourseDistributionChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,9 +268,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             const dataUrls = ['students_data.csv' , 'students_data_foreign.csv'];
             let allStudentData = [];
-            let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance, stateTrendChartInstance;
-            let yearAnalysisChartInstances = {};
-
+            let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance, stateTrendChartInstance, stateCourseDistributionChartInstance;
+            
             Chart.register(ChartDataLabels);
             Chart.defaults.plugins.datalabels.color = '#334155';
             Chart.defaults.plugins.datalabels.font.weight = '500';
@@ -352,14 +346,6 @@
                 geoCourseFilter.addEventListener('change', () => updateGeographicalCharts(data));
 
                 const years = ['All Years', ...[...new Set(data.map(r => r.Year))].filter(y => y !== 'N/A').sort()];
-                const yearAnalysisFilters = document.querySelectorAll('[id^="year-analysis-filter-"]');
-                yearAnalysisFilters.forEach(filter => {
-                    years.forEach(y => {
-                        const optionValue = y === 'All Years' ? 'ALL' : y;
-                        filter.add(new Option(y, optionValue));
-                    });
-                    filter.addEventListener('change', () => updateYearAnalysisCharts(data));
-                });
 
                 const stateTrendsYearFilter = document.getElementById('state-trends-year-filter');
                 years.forEach(y => {
@@ -367,6 +353,24 @@
                     stateTrendsYearFilter.add(new Option(y, optionValue));
                 });
                 stateTrendsYearFilter.addEventListener('change', () => updateStateTrendChart(data));
+
+                const stateCourseYearFilter = document.getElementById('state-course-year-filter');
+                const stateCourseStateFilter = document.getElementById('state-course-state-filter');
+                
+                years.forEach(y => {
+                    const optionValue = y === 'All Years' ? 'ALL' : y;
+                    stateCourseYearFilter.add(new Option(y, optionValue));
+                });
+                
+                const statesForFilter = ['All States', ...[...new Set(data.map(r => r['Permanent State']))].filter(s => s !== 'N/A').sort()];
+                statesForFilter.forEach(s => {
+                    const optionValue = s === 'All States' ? 'ALL' : s;
+                    const optionText = s === 'All States' ? s : s.charAt(0) + s.slice(1).toLowerCase();
+                    stateCourseStateFilter.add(new Option(optionText, optionValue));
+                });
+
+                stateCourseYearFilter.addEventListener('change', () => updateStateCourseDistributionChart(data));
+                stateCourseStateFilter.addEventListener('change', () => updateStateCourseDistributionChart(data));
             }
 
             function renderAllTabs(data) {
@@ -375,8 +379,8 @@
                 updateYearTrendChart(data);
                 updateGeographicalCharts(data);
                 updateCourseByYearChart(data);
-                updateYearAnalysisCharts(data);
                 updateStateTrendChart(data);
+                updateStateCourseDistributionChart(data);
             }
 
             function renderKpiCards(data) {
@@ -468,7 +472,25 @@
 
                     chartType = 'bar';
                     datasets = courses.map(course => ({ label: course, data: years.map(year => (counts[year] && counts[year][course]) || 0), backgroundColor: colorMap[course], borderRadius: 2 }));
-                    datalabelsConfig = { display: false };
+                    datalabelsConfig = {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#475569',
+                        font: { weight: 'bold' },
+                        formatter: (value, context) => {
+                            const total = context.chart.data.datasets.reduce((sum, dataset) => sum + dataset.data[context.dataIndex], 0);
+                            
+                            let topDatasetIndex = -1;
+                            for (let i = context.chart.data.datasets.length - 1; i >= 0; i--) {
+                                if (context.chart.data.datasets[i].data[context.dataIndex] > 0) {
+                                    topDatasetIndex = i;
+                                    break;
+                                }
+                            }
+                            
+                            return context.datasetIndex === topDatasetIndex ? total : '';
+                        }
+                    };
 
                 } else {
                     const filteredData = data.filter(r => r.Course === courseFilter);
@@ -486,37 +508,7 @@
                     options: { responsive: true, scales: { x: { stacked: courseFilter === 'ALL', grid: { display: false } }, y: { stacked: courseFilter === 'ALL', grid: { color: '#e2e8f0' } } }, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, datalabels: datalabelsConfig } }
                 });
             }
-
-            function updateYearAnalysisCharts(data) {
-                const tabs = ['overview', 'geographics', 'courses'];
-                tabs.forEach(tab => {
-                    const filterEl = document.getElementById(`year-analysis-filter-${tab}`);
-                    const chartElId = `yearAnalysisChart-${tab}`;
-                    if (!filterEl) return;
-
-                    const yearFilter = filterEl.value;
-                    const filteredData = (yearFilter === 'ALL') ? data : data.filter(r => r.Year === yearFilter);
-
-                    if (yearAnalysisChartInstances[tab]) yearAnalysisChartInstances[tab].destroy();
-                    
-                    const counts = filteredData.reduce((acc, { Course }) => { if (Course !== 'N/A') acc[Course] = (acc[Course] || 0) + 1; return acc; }, {});
-                    const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
-                    const labels = sorted.map(item => item[0]);
-                    const values = sorted.map(item => item[1]);
-
-                    yearAnalysisChartInstances[tab] = new Chart(document.getElementById(chartElId), {
-                        type: 'bar',
-                        data: { labels, datasets: [{ label: 'Number of Students', data: values, backgroundColor: PALETTE[0], borderRadius: 4 }] },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            scales: { x: { beginAtZero: true } },
-                            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end' } }
-                        }
-                    });
-                });
-            }
-
+            
             function updateStateTrendChart(data) {
                 if (stateTrendChartInstance) stateTrendChartInstance.destroy();
 
@@ -556,7 +548,25 @@
                             scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
                             plugins: {
                                 legend: { display: false },
-                                datalabels: { display: false }
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    color: '#475569',
+                                    font: { weight: 'bold' },
+                                    formatter: (value, context) => {
+                                        const total = context.chart.data.datasets.reduce((sum, dataset) => sum + dataset.data[context.dataIndex], 0);
+                                        
+                                        let topDatasetIndex = -1;
+                                        for (let i = context.chart.data.datasets.length - 1; i >= 0; i--) {
+                                            if (context.chart.data.datasets[i].data[context.dataIndex] > 0) {
+                                                topDatasetIndex = i;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        return context.datasetIndex === topDatasetIndex ? total : '';
+                                    }
+                                }
                             },
                             interaction: { intersect: false, mode: 'index' },
                         }
@@ -597,6 +607,53 @@
                         }
                     });
                 }
+            }
+
+            function updateStateCourseDistributionChart(data) {
+                if (stateCourseDistributionChartInstance) stateCourseDistributionChartInstance.destroy();
+
+                const yearFilter = document.getElementById('state-course-year-filter').value;
+                const stateFilter = document.getElementById('state-course-state-filter').value;
+                
+                let filteredData = data;
+                if(yearFilter !== 'ALL') {
+                    filteredData = filteredData.filter(r => r.Year === yearFilter);
+                }
+                if(stateFilter !== 'ALL') {
+                    filteredData = filteredData.filter(r => r['Permanent State'] === stateFilter);
+                }
+                
+                const counts = filteredData.reduce((acc, { Course }) => {
+                    if (Course !== 'N/A') {
+                        acc[Course] = (acc[Course] || 0) + 1;
+                    }
+                    return acc;
+                }, {});
+
+                const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+                const labels = sorted.map(item => item[0]);
+                const values = sorted.map(item => item[1]);
+
+                stateCourseDistributionChartInstance = new Chart(document.getElementById('stateCourseDistributionChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: `Course Count`,
+                            data: values,
+                            backgroundColor: PALETTE[3],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: { anchor: 'end', align: 'end' }
+                        }
+                    }
+                });
             }
 
             initDashboard();
