@@ -126,6 +126,9 @@
                             <path
                                 d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 16c1.255 0 2.443-.29 3.5-.804V4.804zM14.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0114.5 16c1.255 0 2.443-.29 3.5-.804V4.804A7.968 7.968 0 0014.5 4z" />
                         </svg>Course Trends</button>
+                    <button data-tab="statetrends" class="tab-button"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 11h14a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1v-5a1 1 0 011-1zM2 3h14a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z" />
+                        </svg>State Trends</button>
                 </nav>
             </div>
 
@@ -178,7 +181,7 @@
                         </div>
                         <div class="chart-card p-6">
                             <h2 class="text-xl font-semibold mb-4 text-center text-slate-700">Course Enrollment Breakdown</h2>
-                            <div class="relative mx-auto" style="max-height: 80vw; max-width: 80vw;">
+                            <div class="relative mx-auto" style="max-height: 450px; max-width: 450px;">
                                 <canvas id="courseChart"></canvas>
                             </div>
                         </div>
@@ -243,6 +246,25 @@
                         <canvas id="yearAnalysisChart-courses"></canvas>
                     </div>
                 </div>
+                <!-- State Trends Tab -->
+                <div id="statetrends-content" class="tab-content">
+                    <div class="chart-card p-6">
+                        <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-4 gap-4">
+                            <h2 class="text-xl font-semibold text-slate-700">State-wise Enrollment Analysis</h2>
+                            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                <div class="flex items-center">
+                                    <label for="state-trends-course-filter" class="mr-3 font-medium text-slate-600">Course:</label>
+                                    <select id="state-trends-course-filter" class="filter-select"></select>
+                                </div>
+                                <div class="flex items-center">
+                                    <label for="state-trends-year-filter" class="mr-3 font-medium text-slate-600">Year:</label>
+                                    <select id="state-trends-year-filter" class="filter-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="stateTrendChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -251,7 +273,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             const dataUrls = ['students_data.csv' , 'students_data_foreign.csv'];
             let allStudentData = [];
-            let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance;
+            let stateChartInstance, cityChartInstance, yearTrendChartInstance, courseByYearChartInstance, stateTrendChartInstance;
             let yearAnalysisChartInstances = {};
 
             Chart.register(ChartDataLabels);
@@ -304,16 +326,19 @@
                 const yoyFilter = document.getElementById('yoy-course-filter');
                 const trendsFilter = document.getElementById('trends-course-filter');
                 const geoCourseFilter = document.getElementById('geo-course-filter');
+                const stateTrendsCourseFilter = document.getElementById('state-trends-course-filter');
 
                 courses.forEach(c => {
                     const optionValue = c === 'All Courses' ? 'ALL' : c;
                     yoyFilter.add(new Option(c, optionValue));
                     trendsFilter.add(new Option(c, optionValue));
                     geoCourseFilter.add(new Option(c, optionValue));
+                    stateTrendsCourseFilter.add(new Option(c, optionValue));
                 });
 
                 yoyFilter.addEventListener('change', () => updateYearTrendChart(data));
                 trendsFilter.addEventListener('change', () => updateCourseByYearChart(data));
+                stateTrendsCourseFilter.addEventListener('change', () => updateStateTrendChart(data));
 
                 const countries = ['All Countries', ...[...new Set(data.map(r => r['Permanent Country']))].sort()];
                 const countryFilter = document.getElementById('country-filter');
@@ -335,6 +360,13 @@
                     });
                     filter.addEventListener('change', () => updateYearAnalysisCharts(data));
                 });
+
+                const stateTrendsYearFilter = document.getElementById('state-trends-year-filter');
+                years.forEach(y => {
+                    const optionValue = y === 'All Years' ? 'ALL' : y;
+                    stateTrendsYearFilter.add(new Option(y, optionValue));
+                });
+                stateTrendsYearFilter.addEventListener('change', () => updateStateTrendChart(data));
             }
 
             function renderAllTabs(data) {
@@ -344,6 +376,7 @@
                 updateGeographicalCharts(data);
                 updateCourseByYearChart(data);
                 updateYearAnalysisCharts(data);
+                updateStateTrendChart(data);
             }
 
             function renderKpiCards(data) {
@@ -482,6 +515,88 @@
                         }
                     });
                 });
+            }
+
+            function updateStateTrendChart(data) {
+                if (stateTrendChartInstance) stateTrendChartInstance.destroy();
+
+                const courseFilter = document.getElementById('state-trends-course-filter').value;
+                const yearFilter = document.getElementById('state-trends-year-filter').value;
+                const chartTitle = document.querySelector('#statetrends-content h2');
+
+                let filteredData = data;
+                if (courseFilter !== 'ALL') {
+                    filteredData = filteredData.filter(r => r.Course === courseFilter);
+                }
+
+                if (yearFilter === 'ALL') {
+                    chartTitle.textContent = 'State-wise Enrollment Trend by Year';
+                    const years = [...new Set(filteredData.map(r => r.Year))].filter(y => y !== 'N/A').sort();
+                    const states = [...new Set(filteredData.map(r => r['Permanent State']))].filter(s => s !== 'N/A');
+
+                    const counts = filteredData.reduce((acc, { Year, 'Permanent State': State }) => {
+                        if (Year !== 'N/A' && State !== 'N/A') {
+                            if (!acc[State]) acc[State] = {};
+                            acc[State][Year] = (acc[State][Year] || 0) + 1;
+                        }
+                        return acc;
+                    }, {});
+
+                    const datasets = states.map((state, i) => ({
+                        label: state.charAt(0) + state.slice(1).toLowerCase(),
+                        data: years.map(year => (counts[state] && counts[state][year]) || 0),
+                        backgroundColor: PALETTE[i % PALETTE.length],
+                    }));
+
+                    stateTrendChartInstance = new Chart(document.getElementById('stateTrendChart'), {
+                        type: 'bar',
+                        data: { labels: years, datasets: datasets },
+                        options: {
+                            responsive: true,
+                            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                            plugins: {
+                                legend: { display: false },
+                                datalabels: { display: false }
+                            },
+                            interaction: { intersect: false, mode: 'index' },
+                        }
+                    });
+
+                } else {
+                    chartTitle.textContent = `State-wise Enrollment for ${yearFilter}`;
+                    const yearFilteredData = filteredData.filter(r => r.Year === yearFilter);
+                    
+                    const counts = yearFilteredData.reduce((acc, row) => {
+                        const key = row['Permanent State'];
+                        if (key && key !== 'N/A') acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+                    const labels = sorted.map(item => item[0].charAt(0) + item[0].slice(1).toLowerCase());
+                    const values = sorted.map(item => item[1]);
+
+                    stateTrendChartInstance = new Chart(document.getElementById('stateTrendChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `Students in ${yearFilter}`,
+                                data: values,
+                                backgroundColor: PALETTE[8],
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            scales: { x: { beginAtZero: true }, y: { grid: { display: false } } },
+                            plugins: {
+                                legend: { display: false },
+                                datalabels: { anchor: 'end', align: 'end', offset: 4 }
+                            }
+                        }
+                    });
+                }
             }
 
             initDashboard();
